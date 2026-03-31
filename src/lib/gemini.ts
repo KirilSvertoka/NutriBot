@@ -2,23 +2,12 @@ import { CustomRecipe } from "../types";
 
 const getHeaders = () => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const apiKey = localStorage.getItem('gemini_api_key');
+  if (apiKey) {
+    headers['x-gemini-api-key'] = apiKey;
+  }
   return headers;
 };
-
-export async function analyzeFood(query: string, images: {data: string, mimeType: string}[], recipes: CustomRecipe[]) {
-  const response = await fetch('/api/analyzeFood', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ query, images, recipes })
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to analyze food');
-  }
-  
-  return response.json();
-}
 
 export async function analyzeIngredient(name: string) {
   const response = await fetch('/api/analyzeIngredient', {
@@ -35,18 +24,17 @@ export async function analyzeIngredient(name: string) {
   return response.json();
 }
 
-export async function getRecommendations(meals: any[], goals: any, profile?: any) {
-  const response = await fetch('/api/getRecommendations', {
+export async function chatWithAssistant(message: string, history: any[], context: any, images: {data: string, mimeType: string}[] = [], recipes: CustomRecipe[] = []) {
+  const response = await fetch('/api/chat', {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ meals, goals, profile })
+    body: JSON.stringify({ message, history, context, images, recipes })
   });
   
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to get recommendations');
+    throw new Error(errorData.error || 'Failed to chat');
   }
   
-  const data = await response.json();
-  return data.text;
+  return response.json();
 }

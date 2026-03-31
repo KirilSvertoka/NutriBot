@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Send, Loader2, Sparkles, Trash2, Calendar as CalendarIcon, Settings, Barcode, ChefHat, PlusCircle, LogOut, BarChart3 } from 'lucide-react';
+import { Camera, Send, Loader2, Sparkles, Trash2, Calendar as CalendarIcon, Settings, Barcode, ChefHat, PlusCircle, LogOut, BarChart3, Bot, User, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, isSameDay, subDays, startOfToday } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { analyzeFood, getRecommendations } from './lib/gemini';
+import { chatWithAssistant } from './lib/gemini';
 import { fileToBase64, cn } from './lib/utils';
 import { Meal, DailyGoal, CustomRecipe, UserProfile } from './types';
 import { ProgressBar } from './components/ProgressBar';
@@ -97,8 +97,18 @@ export default function App() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [recommendation, setRecommendation] = useState<string | null>(null);
-  const [isRecLoading, setIsRecLoading] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<{role: string, text: string}[]>([
+    { role: 'model', text: 'Привет! Я ваш ИИ-ассистент по питанию. Чем могу помочь? Я могу подсказать рецепт, добавить прием пищи или удалить ошибочную запись.' }
+  ]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isChatOpen, isLoading]);
   
   // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -183,7 +193,12 @@ export default function App() {
     e.preventDefault();
     if (!searchQuery.trim() && imageFiles.length === 0) return;
 
+    const userMsg = searchQuery.trim();
+    setSearchQuery('');
+    setIsChatOpen(true);
+    setChatMessages(prev => [...prev, { role: 'user', text: userMsg || 'Фотография еды' }]);
     setIsLoading(true);
+
     try {
       const processedImages = await Promise.all(
         imageFiles.map(async (file) => ({
@@ -192,29 +207,35 @@ export default function App() {
         }))
       );
 
-      const result = await analyzeFood(searchQuery, processedImages, recipes);
+      const context = { meals: selectedMeals, goals, profile };
+      const response = await chatWithAssistant(userMsg, chatHistory, context, processedImages, recipes);
       
-      const newMeal: Meal = {
-        id: crypto.randomUUID(),
-        timestamp: isSameDay(selectedDate, startOfToday()) 
-          ? Date.now() 
-          : new Date(selectedDate).setHours(12, 0, 0, 0),
-        name: result.foodName,
-        calories: result.calories,
-        protein: result.protein,
-        fat: result.fat,
-        carbs: result.carbs,
-        explanation: result.explanation,
-        image: imagePreviews.length > 0 ? imagePreviews[0] : undefined,
-      };
+      setChatHistory(response.history);
+      setChatMessages(prev => [...prev, { role: 'model', text: response.text }]);
 
-      await saveMealToLocal(newMeal);
-      setSearchQuery('');
+      if (response.actions) {
+        for (const action of response.actions) {
+          if (action.type === 'ADD_MEAL') {
+            const meal = {
+              ...action.payload.meal,
+              timestamp: isSameDay(selectedDate, startOfToday()) 
+                ? Date.now() 
+                : new Date(selectedDate).setHours(12, 0, 0, 0),
+              image: imagePreviews.length > 0 ? imagePreviews[0] : undefined,
+            };
+            await saveMealToLocal(meal);
+          } else if (action.type === 'DELETE_MEAL') {
+            await deleteMeal(action.payload.id);
+          } else if (action.type === 'EDIT_MEAL') {
+            await editMeal(action.payload.id, action.payload.updates);
+          }
+        }
+      }
+      
       clearImages();
-      setRecommendation(null);
     } catch (error) {
-      console.error('Error analyzing food:', error);
-      alert('Не удалось проанализировать еду. Попробуйте еще раз.');
+      console.error('Error in chat:', error);
+      setChatMessages(prev => [...prev, { role: 'model', text: 'Извините, произошла ошибка при обработке запроса.' }]);
     } finally {
       setIsLoading(false);
     }
@@ -271,6 +292,16 @@ export default function App() {
     });
   };
 
+  const editMeal = async (id: string, updates: Partial<Meal>) => {
+    if (!user) return;
+    setMeals(prev => {
+      const newMeals = prev.map(m => m.id === id ? { ...m, ...updates } : m);
+      const data = loadUserData(user.uid);
+      saveUserData(user.uid, { ...data, meals: newMeals });
+      return newMeals;
+    });
+  };
+
   const saveRecipeToLocal = async (recipe: CustomRecipe) => {
     if (!user) return;
     setRecipes(prev => {
@@ -304,18 +335,6 @@ export default function App() {
     if (newProfile.goals) setGoals(newProfile.goals);
     const data = loadUserData(user.uid);
     saveUserData(user.uid, { ...data, profile: newProfile });
-  };
-
-  const fetchRecommendation = async () => {
-    setIsRecLoading(true);
-    try {
-      const rec = await getRecommendations(selectedMeals, goals, profile);
-      setRecommendation(rec);
-    } catch (error) {
-      console.error('Error getting recommendation:', error);
-    } finally {
-      setIsRecLoading(false);
-    }
   };
 
   // Generate last 14 days
@@ -522,27 +541,6 @@ export default function App() {
       {/* Main Content */}
       <main className="max-w-md mx-auto px-4 py-6 space-y-6">
         
-        {/* Recommendations Section */}
-        <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="font-semibold text-emerald-800 flex items-center gap-2">
-              <Sparkles className="w-4 h-4" /> Совет от ИИ
-            </h2>
-            <button 
-              onClick={fetchRecommendation}
-              disabled={isRecLoading}
-              className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md hover:bg-emerald-200 transition-colors disabled:opacity-50"
-            >
-              {isRecLoading ? 'Думаю...' : 'Получить совет'}
-            </button>
-          </div>
-          {recommendation ? (
-            <p className="text-sm text-emerald-900 leading-relaxed">{recommendation}</p>
-          ) : (
-            <p className="text-sm text-emerald-700/70 italic">Нажмите «Получить совет» для персональной рекомендации на день.</p>
-          )}
-        </div>
-
         {/* Meal List */}
         <div>
           <h2 className="font-semibold text-gray-700 mb-4">
@@ -620,8 +618,53 @@ export default function App() {
       </main>
 
       {/* Input Area (Sticky Bottom) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-safe">
-        <div className="max-w-md mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <AnimatePresence>
+          {isChatOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: '400px', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="bg-gray-50 border-b border-gray-200 overflow-hidden flex flex-col max-w-md mx-auto"
+            >
+              <div className="bg-emerald-500 p-3 flex justify-between items-center text-white shrink-0">
+                <div className="flex items-center gap-2">
+                  <Bot className="w-5 h-5" />
+                  <h3 className="font-bold text-sm">ИИ-Ассистент</h3>
+                </div>
+                <button onClick={() => setIsChatOpen(false)} className="p-1 hover:bg-emerald-600 rounded-full transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatMessages.map((msg, idx) => (
+                  <div key={idx} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                      {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+                    </div>
+                    <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-blue-500 text-white rounded-tr-none' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'}`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex gap-2 flex-row">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-emerald-100 text-emerald-600">
+                      <Bot className="w-5 h-5" />
+                    </div>
+                    <div className="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                      <span className="text-sm text-gray-500">Печатает...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="p-4 pb-safe max-w-md mx-auto">
           {imagePreviews.length > 0 && (
             <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3 pb-1">
               {imagePreviews.map((preview, idx) => (

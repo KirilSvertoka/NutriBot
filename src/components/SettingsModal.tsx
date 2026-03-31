@@ -11,6 +11,17 @@ interface SettingsModalProps {
 
 export function SettingsModal({ goals, onSave, onClose, onResetProfile }: SettingsModalProps) {
   const [g, setG] = useState(goals);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+
+  const handleSaveApiKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem('gemini_api_key', apiKey.trim());
+      alert('API ключ сохранен!');
+    } else {
+      localStorage.removeItem('gemini_api_key');
+      alert('API ключ удален. Будет использоваться системный ключ (если доступен).');
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -67,6 +78,30 @@ export function SettingsModal({ goals, onSave, onClose, onResetProfile }: Settin
               className="w-full bg-emerald-500 text-white py-3 rounded-lg font-medium hover:bg-emerald-600 transition-colors shadow-sm"
             >
               Сохранить цели
+            </button>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <h3 className="font-semibold text-gray-700 border-b pb-2">Настройки ИИ (Gemini)</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ваш API ключ (опционально)</label>
+              <input 
+                type="password" 
+                value={apiKey} 
+                onChange={e => setApiKey(e.target.value)} 
+                placeholder="AIzaSy..."
+                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all" 
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Оставьте пустым, чтобы использовать встроенный ключ.
+              </p>
+            </div>
+            
+            <button 
+              onClick={handleSaveApiKey} 
+              className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors shadow-sm"
+            >
+              Сохранить ключ
             </button>
           </div>
 
