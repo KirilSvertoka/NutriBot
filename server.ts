@@ -229,6 +229,7 @@ app.post('/api/chat', async (req, res) => {
             functionResponse: { name: call.name, response: { success: true } }
           });
         } else if (call.name === 'saveRecipe') {
+          console.log("Processing saveRecipe, args:", JSON.stringify(call.args));
           let recipeId;
           try {
             recipeId = crypto.randomUUID();
@@ -236,17 +237,24 @@ app.post('/api/chat', async (req, res) => {
             console.error("crypto.randomUUID() failed, falling back:", e);
             recipeId = Date.now().toString() + Math.random().toString();
           }
+          
+          if (!call.args.name || !call.args.ingredients) {
+             console.error("Missing required arguments for saveRecipe");
+             throw new Error("Missing required arguments for saveRecipe");
+          }
+
           const newRecipe = {
             id: recipeId,
             name: call.args.name,
             ingredients: call.args.ingredients,
             macrosPer100g: {
-              calories: call.args.calories,
-              protein: call.args.protein,
-              fat: call.args.fat,
-              carbs: call.args.carbs
+              calories: call.args.calories || 0,
+              protein: call.args.protein || 0,
+              fat: call.args.fat || 0,
+              carbs: call.args.carbs || 0
             }
           };
+          console.log("New recipe object created:", JSON.stringify(newRecipe));
           actions.push({ type: 'SAVE_RECIPE', payload: { recipe: newRecipe } });
           functionResponses.push({
             functionResponse: { name: call.name, response: { success: true, recipe: newRecipe } }
