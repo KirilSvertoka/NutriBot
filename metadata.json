@@ -1,0 +1,5 @@
+{
+  "name": "NutriBot Mini App",
+  "description": "AI-powered calorie and macro tracker that analyzes food from text and images.",
+  "requestFramePermissions": ["camera"]
+}
