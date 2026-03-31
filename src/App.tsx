@@ -28,6 +28,39 @@ const DEFAULT_GOALS: DailyGoal = {
 };
 
 export default function App() {
+  const [localUser, setLocalUser] = useState<{uid: string, email: string} | null>(() => {
+    const saved = localStorage.getItem('nutribot_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+
+  const handleLocalLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const users = [
+      { username: 'admin', password: 'admin123', uid: 'local-user-admin', email: 'admin@nutri.bot' },
+      { username: 'user', password: 'user123', uid: 'local-user-regular', email: 'user@nutri.bot' }
+    ];
+
+    const found = users.find(u => u.username === loginForm.username && u.password === loginForm.password);
+    if (found) {
+      const userData = { uid: found.uid, email: found.email };
+      setLocalUser(userData);
+      localStorage.setItem('nutribot_user', JSON.stringify(userData));
+      setLoginError('');
+    } else {
+      setLoginError('Неверный логин или пароль');
+    }
+  };
+
+  const handleLocalLogout = () => {
+    setLocalUser(null);
+    localStorage.removeItem('nutribot_user');
+    setProfile(null);
+    setMeals([]);
+    setRecipes([]);
+  };
+
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
@@ -55,12 +88,14 @@ export default function App() {
   const calendarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    if (localUser) {
+      setUser(localUser as any);
       setIsAuthReady(true);
-    });
-    return () => unsubscribe();
-  }, []);
+    } else {
+      setUser(null);
+      setIsAuthReady(true);
+    }
+  }, [localUser]);
 
   useEffect(() => {
     if (!user || !isAuthReady) return;
@@ -356,21 +391,65 @@ export default function App() {
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center space-y-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center space-y-6"
+        >
           <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
             <Sparkles className="w-8 h-8" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-800">НутриБот</h1>
-            <p className="text-gray-500 mt-2 text-sm">Ваш умный дневник питания. Войдите, чтобы начать отслеживать свой рацион.</p>
+            <p className="text-gray-500 mt-2 text-sm">Войдите в свой аккаунт</p>
           </div>
-          <button 
-            onClick={handleLogin}
-            className="w-full bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600 transition-colors shadow-md"
-          >
-            Войти через Google
-          </button>
-        </div>
+
+          <form onSubmit={handleLocalLogin} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 ml-1">Логин</label>
+              <input
+                type="text"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:border-emerald-500 transition-colors"
+                placeholder="admin или user"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 ml-1">Пароль</label>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:border-emerald-500 transition-colors"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            {loginError && (
+              <p className="text-red-500 text-sm text-center bg-red-50 py-2 rounded-xl border border-red-100">
+                {loginError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] mt-4"
+            >
+              Войти
+            </button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+            <p className="text-gray-400 text-[10px] uppercase tracking-widest leading-relaxed">
+              Тестовые данные:<br/>
+              admin / admin123<br/>
+              user / user123
+            </p>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -406,7 +485,7 @@ export default function App() {
               <button onClick={() => setIsSettingsOpen(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
                 <Settings className="w-5 h-5" />
               </button>
-              <button onClick={handleLogout} className="p-2 text-gray-500 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors">
+              <button onClick={handleLocalLogout} className="p-2 text-gray-500 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors">
                 <LogOut className="w-5 h-5" />
               </button>
             </div>
