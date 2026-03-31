@@ -17,7 +17,7 @@ import { StatisticsModal } from './components/StatisticsModal';
 
 // Firebase imports
 import { auth, db, googleProvider } from './firebase';
-import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, setDoc, onSnapshot, deleteDoc, query, orderBy } from 'firebase/firestore';
 
 const DEFAULT_GOALS: DailyGoal = {
@@ -107,9 +107,17 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    // Handle potential redirect errors
+    getRedirectResult(auth).catch((error) => {
+      console.error("Redirect login failed", error);
+      alert("Ошибка авторизации: " + error.message);
+    });
+  }, []);
+
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       console.error("Login failed", error);
     }

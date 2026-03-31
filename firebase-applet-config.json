@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0249842439",
-  "appId": "1:176220900120:web:797ec1c5b2a7021945ac6d",
-  "apiKey": "AIzaSyDFgfaelJeFMKhcXg4CqWhGjkMxu2hbuLQ",
-  "authDomain": "gen-lang-client-0249842439.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-7fe5214a-2b10-4e9d-9702-47fa7c31121c",
-  "storageBucket": "gen-lang-client-0249842439.firebasestorage.app",
-  "messagingSenderId": "176220900120",
-  "measurementId": ""
+  "projectId": "nutribot-super-app",
+  "appId": "1:854470634504:web:997239e8c7e417f58a35bd",
+  "apiKey": "AIzaSyA8GBtNgENpQ96t97XPFsIcF8JDzOa29hg",
+  "authDomain": "nutribot-super-app.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "nutribot-super-app.firebasestorage.app",
+  "messagingSenderId": "854470634504",
+  "measurementId": "G-HZ7CK3T569"
 }
