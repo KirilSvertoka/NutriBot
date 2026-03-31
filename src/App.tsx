@@ -442,21 +442,21 @@ export default function App() {
       <header className="bg-white px-4 py-6 shadow-sm sticky top-0 z-10">
         <div className="max-w-md mx-auto">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <Sparkles className="text-emerald-500 w-5 h-5" />
-              НутриБот
+            <h1 className="text-lg sm:text-xl font-bold flex items-center gap-1 sm:gap-2 truncate mr-2">
+              <Sparkles className="text-emerald-500 w-5 h-5 shrink-0" />
+              <span className="truncate">НутриБот</span>
             </h1>
-            <div className="flex gap-2">
-              <button onClick={() => setIsStatsOpen(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+            <div className="flex gap-0.5 sm:gap-2 shrink-0">
+              <button onClick={() => setIsStatsOpen(true)} className="p-1.5 sm:p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Статистика">
                 <BarChart3 className="w-5 h-5" />
               </button>
-              <button onClick={() => setIsRecipeOpen(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+              <button onClick={() => setIsRecipeOpen(true)} className="p-1.5 sm:p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Мои блюда">
                 <ChefHat className="w-5 h-5" />
               </button>
-              <button onClick={() => setIsSettingsOpen(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+              <button onClick={() => setIsSettingsOpen(true)} className="p-1.5 sm:p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Настройки">
                 <Settings className="w-5 h-5" />
               </button>
-              <button onClick={handleLocalLogout} className="p-2 text-gray-500 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors">
+              <button onClick={handleLocalLogout} className="p-1.5 sm:p-2 text-gray-500 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors" title="Выйти">
                 <LogOut className="w-5 h-5" />
               </button>
             </div>
@@ -638,33 +638,33 @@ export default function App() {
             </div>
           )}
           
-          <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+          <form onSubmit={handleSubmit} className="flex gap-1.5 sm:gap-2 items-center">
             <button
               type="button"
               onClick={() => setIsManualEntryOpen(true)}
-              className="p-3 text-gray-500 hover:bg-gray-100 rounded-full transition-colors shrink-0"
+              className="p-2 sm:p-3 text-gray-500 hover:bg-gray-100 rounded-full transition-colors shrink-0"
               disabled={isLoading}
               title="Ручной ввод"
             >
-              <PlusCircle className="w-6 h-6" />
+              <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
             <button
               type="button"
               onClick={() => setIsBarcodeOpen(true)}
-              className="p-3 text-gray-500 hover:bg-gray-100 rounded-full transition-colors shrink-0"
+              className="p-2 sm:p-3 text-gray-500 hover:bg-gray-100 rounded-full transition-colors shrink-0"
               disabled={isLoading}
               title="Сканировать штрихкод"
             >
-              <Barcode className="w-6 h-6" />
+              <Barcode className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-3 text-gray-500 hover:bg-gray-100 rounded-full transition-colors shrink-0"
+              className="p-2 sm:p-3 text-gray-500 hover:bg-gray-100 rounded-full transition-colors shrink-0"
               disabled={isLoading}
               title="Сделать фото"
             >
-              <Camera className="w-6 h-6" />
+              <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
             <input 
               type="file" 
@@ -680,16 +680,16 @@ export default function App() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Что вы съели?"
-              className="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-full px-4 py-3 outline-none transition-all"
+              className="flex-1 min-w-0 bg-gray-100 border-transparent focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-full px-3 sm:px-4 py-2 sm:py-3 outline-none transition-all text-sm sm:text-base"
               disabled={isLoading}
             />
             
             <button
               type="submit"
               disabled={isLoading || (!searchQuery.trim() && imageFiles.length === 0)}
-              className="p-3 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              className="p-2 sm:p-3 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              {isLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
           </form>
         </div>

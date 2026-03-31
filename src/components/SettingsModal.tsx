@@ -11,17 +11,6 @@ interface SettingsModalProps {
 
 export function SettingsModal({ goals, onSave, onClose, onResetProfile }: SettingsModalProps) {
   const [g, setG] = useState(goals);
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
-
-  const handleSaveApiKey = () => {
-    if (apiKey.trim()) {
-      localStorage.setItem('gemini_api_key', apiKey.trim());
-      alert('API ключ успешно сохранен на вашем устройстве!');
-    } else {
-      localStorage.removeItem('gemini_api_key');
-      alert('API ключ удален. Будет использоваться ключ по умолчанию.');
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -34,30 +23,6 @@ export function SettingsModal({ goals, onSave, onClose, onResetProfile }: Settin
         </div>
         
         <div className="space-y-6">
-          {/* AI Settings Section */}
-          <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-            <h3 className="font-semibold text-gray-700">Настройки ИИ (Gemini)</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ваш личный API Ключ</label>
-              <input 
-                type="password" 
-                value={apiKey} 
-                onChange={e => setApiKey(e.target.value)} 
-                placeholder="AIzaSy..."
-                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm" 
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Если оставить пустым, будет использоваться общий ключ. Чтобы использовать свои лимиты, получите бесплатный ключ в <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-emerald-600 underline">Google AI Studio</a>.
-              </p>
-            </div>
-            <button 
-              onClick={handleSaveApiKey} 
-              className="w-full bg-white border border-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm text-sm"
-            >
-              Сохранить ключ
-            </button>
-          </div>
-
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-700 border-b pb-2">Ручная настройка КБЖУ</h3>
             <div>

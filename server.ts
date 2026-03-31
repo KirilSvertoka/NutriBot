@@ -10,9 +10,8 @@ const PORT = 3000;
 app.use(express.json({ limit: '50mb' }));
 
 // Helper to get AI instance
-const getAI = (req: express.Request) => {
-  const userKey = req.headers['x-gemini-api-key'] as string;
-  const apiKey = userKey || process.env.GEMINI_API_KEY;
+const getAI = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("API ключ не найден. Пожалуйста, добавьте его в настройках.");
   }
@@ -48,7 +47,7 @@ app.post('/api/analyzeFood', async (req, res) => {
         recipes.map((r: any) => `- ${r.name}: ${r.macrosPer100g.calories} ккал, Б:${r.macrosPer100g.protein}г, Ж:${r.macrosPer100g.fat}г, У:${r.macrosPer100g.carbs}г на 100г.`).join('\n');
     }
 
-    const ai = getAI(req);
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: { parts },
@@ -102,7 +101,7 @@ app.post('/api/analyzeIngredient', async (req, res) => {
     const { name } = req.body;
     const prompt = `Укажи пищевую ценность (КБЖУ) на 100 грамм сырого/обычного продукта "${name}". Верни только JSON.`;
 
-    const ai = getAI(req);
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
@@ -158,7 +157,7 @@ app.post('/api/getRecommendations', async (req, res) => {
       Основываясь на том, что он съел, его целях и параметрах, дай короткую, дружелюбную и полезную рекомендацию для следующего приема пищи или перекуса. Не более 3 предложений. Отвечай на русском языке.
     `;
 
-    const ai = getAI(req);
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,

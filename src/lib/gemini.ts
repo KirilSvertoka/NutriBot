@@ -1,11 +1,7 @@
 import { CustomRecipe } from "../types";
 
 const getHeaders = () => {
-  const key = localStorage.getItem('gemini_api_key');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (key) {
-    headers['x-gemini-api-key'] = key;
-  }
   return headers;
 };
 
