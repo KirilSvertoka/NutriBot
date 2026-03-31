@@ -196,68 +196,75 @@ app.post('/api/chat', async (req, res) => {
 
       const functionResponses: any[] = [];
       for (const call of response.functionCalls) {
-        if (call.name === 'addMeal') {
-          const newMeal = {
-            id: crypto.randomUUID(),
-            name: call.args.name,
-            calories: call.args.calories,
-            protein: call.args.protein,
-            fat: call.args.fat,
-            carbs: call.args.carbs
-          };
-          actions.push({ type: 'ADD_MEAL', payload: { meal: newMeal } });
-          functionResponses.push({
-            functionResponse: { name: call.name, response: { success: true, meal: newMeal } }
-          });
-        } else if (call.name === 'deleteMeal') {
-          actions.push({ type: 'DELETE_MEAL', payload: { id: call.args.id } });
-          functionResponses.push({
-            functionResponse: { name: call.name, response: { success: true } }
-          });
-        } else if (call.name === 'editMeal') {
-          actions.push({ type: 'EDIT_MEAL', payload: { 
-            id: call.args.id, 
-            updates: {
-              ...(call.args.name !== undefined && { name: call.args.name }),
-              ...(call.args.calories !== undefined && { calories: call.args.calories }),
-              ...(call.args.protein !== undefined && { protein: call.args.protein }),
-              ...(call.args.fat !== undefined && { fat: call.args.fat }),
-              ...(call.args.carbs !== undefined && { carbs: call.args.carbs })
+        try {
+          if (call.name === 'addMeal') {
+            const newMeal = {
+              id: crypto.randomUUID(),
+              name: call.args.name,
+              calories: call.args.calories,
+              protein: call.args.protein,
+              fat: call.args.fat,
+              carbs: call.args.carbs
+            };
+            actions.push({ type: 'ADD_MEAL', payload: { meal: newMeal } });
+            functionResponses.push({
+              functionResponse: { name: call.name, response: { success: true, meal: newMeal } }
+            });
+          } else if (call.name === 'deleteMeal') {
+            actions.push({ type: 'DELETE_MEAL', payload: { id: call.args.id } });
+            functionResponses.push({
+              functionResponse: { name: call.name, response: { success: true } }
+            });
+          } else if (call.name === 'editMeal') {
+            actions.push({ type: 'EDIT_MEAL', payload: { 
+              id: call.args.id, 
+              updates: {
+                ...(call.args.name !== undefined && { name: call.args.name }),
+                ...(call.args.calories !== undefined && { calories: call.args.calories }),
+                ...(call.args.protein !== undefined && { protein: call.args.protein }),
+                ...(call.args.fat !== undefined && { fat: call.args.fat }),
+                ...(call.args.carbs !== undefined && { carbs: call.args.carbs })
+              }
+            } });
+            functionResponses.push({
+              functionResponse: { name: call.name, response: { success: true } }
+            });
+          } else if (call.name === 'saveRecipe') {
+            console.log("Processing saveRecipe, args:", JSON.stringify(call.args));
+            let recipeId;
+            try {
+              recipeId = crypto.randomUUID();
+            } catch (e) {
+              console.error("crypto.randomUUID() failed, falling back:", e);
+              recipeId = Date.now().toString() + Math.random().toString();
             }
-          } });
-          functionResponses.push({
-            functionResponse: { name: call.name, response: { success: true } }
-          });
-        } else if (call.name === 'saveRecipe') {
-          console.log("Processing saveRecipe, args:", JSON.stringify(call.args));
-          let recipeId;
-          try {
-            recipeId = crypto.randomUUID();
-          } catch (e) {
-            console.error("crypto.randomUUID() failed, falling back:", e);
-            recipeId = Date.now().toString() + Math.random().toString();
-          }
-          
-          if (!call.args.name || !call.args.ingredients) {
-             console.error("Missing required arguments for saveRecipe");
-             throw new Error("Missing required arguments for saveRecipe");
-          }
+            
+            if (!call.args.name || !call.args.ingredients) {
+               console.error("Missing required arguments for saveRecipe");
+               throw new Error("Missing required arguments for saveRecipe");
+            }
 
-          const newRecipe = {
-            id: recipeId,
-            name: call.args.name,
-            ingredients: call.args.ingredients,
-            macrosPer100g: {
-              calories: call.args.calories || 0,
-              protein: call.args.protein || 0,
-              fat: call.args.fat || 0,
-              carbs: call.args.carbs || 0
-            }
-          };
-          console.log("New recipe object created:", JSON.stringify(newRecipe));
-          actions.push({ type: 'SAVE_RECIPE', payload: { recipe: newRecipe } });
+            const newRecipe = {
+              id: recipeId,
+              name: call.args.name,
+              ingredients: call.args.ingredients,
+              macrosPer100g: {
+                calories: call.args.calories || 0,
+                protein: call.args.protein || 0,
+                fat: call.args.fat || 0,
+                carbs: call.args.carbs || 0
+              }
+            };
+            console.log("New recipe object created:", JSON.stringify(newRecipe));
+            actions.push({ type: 'SAVE_RECIPE', payload: { recipe: newRecipe } });
+            functionResponses.push({
+              functionResponse: { name: call.name, response: { success: true, recipe: newRecipe } }
+            });
+          }
+        } catch (err: any) {
+          console.error(`Error processing function call ${call.name}:`, err);
           functionResponses.push({
-            functionResponse: { name: call.name, response: { success: true, recipe: newRecipe } }
+            functionResponse: { name: call.name, response: { success: false, error: err.message } }
           });
         }
       }
