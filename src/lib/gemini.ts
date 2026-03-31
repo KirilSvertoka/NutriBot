@@ -32,8 +32,14 @@ export async function chatWithAssistant(message: string, history: any[], context
   });
   
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to chat');
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to chat');
+    } else {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to chat');
+    }
   }
   
   return response.json();
