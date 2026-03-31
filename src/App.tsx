@@ -15,10 +15,23 @@ import { WeighInModal } from './components/WeighInModal';
 import { ManualEntryModal } from './components/ManualEntryModal';
 import { StatisticsModal } from './components/StatisticsModal';
 
-// Firebase imports
-import { auth, db, googleProvider } from './firebase';
-import { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, setDoc, onSnapshot, deleteDoc, query, orderBy } from 'firebase/firestore';
+const getUserDataKey = (uid: string) => `nutribot_data_${uid}`;
+
+const loadUserData = (uid: string) => {
+  const data = localStorage.getItem(getUserDataKey(uid));
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      return { profile: null, meals: [], recipes: [] };
+    }
+  }
+  return { profile: null, meals: [], recipes: [] };
+};
+
+const saveUserData = (uid: string, data: any) => {
+  localStorage.setItem(getUserDataKey(uid), JSON.stringify(data));
+};
 
 const DEFAULT_GOALS: DailyGoal = {
   calories: 2000,
@@ -28,15 +41,26 @@ const DEFAULT_GOALS: DailyGoal = {
 };
 
 export default function App() {
-  const [localUser, setLocalUser] = useState<{uid: string, email: string} | null>(() => {
-    const saved = localStorage.getItem('nutribot_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<{uid: string, email: string} | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
 
+  useEffect(() => {
+    const saved = localStorage.getItem('nutribot_user');
+    if (saved) {
+      try {
+        setUser(JSON.parse(saved));
+      } catch (e) {
+        localStorage.removeItem('nutribot_user');
+      }
+    }
+    setIsAuthReady(true);
+  }, []);
+
   const handleLocalLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Attempting login with:', loginForm.username);
     const users = [
       { username: 'admin', password: 'admin123', uid: 'local-user-admin', email: 'admin@nutri.bot' },
       { username: 'user', password: 'user123', uid: 'local-user-regular', email: 'user@nutri.bot' }
@@ -44,25 +68,24 @@ export default function App() {
 
     const found = users.find(u => u.username === loginForm.username && u.password === loginForm.password);
     if (found) {
+      console.log('Login successful for:', found.username);
       const userData = { uid: found.uid, email: found.email };
-      setLocalUser(userData);
+      setUser(userData);
       localStorage.setItem('nutribot_user', JSON.stringify(userData));
       setLoginError('');
     } else {
+      console.log('Login failed for:', loginForm.username);
       setLoginError('Неверный логин или пароль');
     }
   };
 
   const handleLocalLogout = () => {
-    setLocalUser(null);
+    setUser(null);
     localStorage.removeItem('nutribot_user');
     setProfile(null);
     setMeals([]);
     setRecipes([]);
   };
-
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
 
   const [meals, setMeals] = useState<Meal[]>([]);
   const [goals, setGoals] = useState<DailyGoal>(DEFAULT_GOALS);
@@ -88,52 +111,17 @@ export default function App() {
   const calendarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (localUser) {
-      setUser(localUser as any);
-      setIsAuthReady(true);
-    } else {
-      setUser(null);
-      setIsAuthReady(true);
-    }
-  }, [localUser]);
-
-  useEffect(() => {
     if (!user || !isAuthReady) return;
 
-    // Listen to Profile
-    const profileUnsub = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as UserProfile;
-        setProfile(data);
-        if (data.goals) setGoals(data.goals);
-      } else {
-        setProfile(null);
-      }
-    }, (error) => {
-      console.error("Firestore Error (Profile):", error);
-    });
-
-    // Listen to Meals
-    const mealsUnsub = onSnapshot(collection(db, 'users', user.uid, 'meals'), (snapshot) => {
-      const fetchedMeals = snapshot.docs.map(doc => doc.data() as Meal).sort((a, b) => b.timestamp - a.timestamp);
-      setMeals(fetchedMeals);
-    }, (error) => {
-      console.error("Firestore Error (Meals):", error);
-    });
-
-    // Listen to Recipes
-    const recipesUnsub = onSnapshot(collection(db, 'users', user.uid, 'recipes'), (snapshot) => {
-      const fetchedRecipes = snapshot.docs.map(doc => doc.data() as CustomRecipe);
-      setRecipes(fetchedRecipes);
-    }, (error) => {
-      console.error("Firestore Error (Recipes):", error);
-    });
-
-    return () => {
-      profileUnsub();
-      mealsUnsub();
-      recipesUnsub();
-    };
+    const data = loadUserData(user.uid);
+    setProfile(data.profile);
+    if (data.profile?.goals) {
+      setGoals(data.profile.goals);
+    } else {
+      setGoals(DEFAULT_GOALS);
+    }
+    setMeals(data.meals || []);
+    setRecipes(data.recipes || []);
   }, [user, isAuthReady]);
 
   useEffect(() => {
@@ -141,33 +129,6 @@ export default function App() {
       calendarRef.current.scrollLeft = calendarRef.current.scrollWidth;
     }
   }, []);
-
-  useEffect(() => {
-    // Handle potential redirect errors
-    getRedirectResult(auth).catch((error) => {
-      console.error("Redirect login failed", error);
-      alert("Ошибка авторизации: " + error.message);
-    });
-  }, []);
-
-  const handleLogin = async () => {
-    try {
-      await signInWithRedirect(auth, googleProvider);
-    } catch (error) {
-      console.error("Login failed", error);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      setProfile(null);
-      setMeals([]);
-      setRecipes([]);
-    } catch (error) {
-      console.error("Logout failed", error);
-    }
-  };
 
   // Filter meals for selected date
   const selectedMeals = meals.filter(m => isSameDay(new Date(m.timestamp), selectedDate));
@@ -208,14 +169,14 @@ export default function App() {
     setImagePreviews([]);
   };
 
-  const saveMealToFirestore = async (meal: Meal) => {
+  const saveMealToLocal = async (meal: Meal) => {
     if (!user) return;
-    try {
-      await setDoc(doc(db, 'users', user.uid, 'meals', meal.id), meal);
-    } catch (error) {
-      console.error('Error saving meal:', error);
-      alert('Ошибка при сохранении приема пищи.');
-    }
+    setMeals(prev => {
+      const newMeals = [...prev, meal].sort((a, b) => b.timestamp - a.timestamp);
+      const data = loadUserData(user.uid);
+      saveUserData(user.uid, { ...data, meals: newMeals });
+      return newMeals;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -247,7 +208,7 @@ export default function App() {
         image: imagePreviews.length > 0 ? imagePreviews[0] : undefined,
       };
 
-      await saveMealToFirestore(newMeal);
+      await saveMealToLocal(newMeal);
       setSearchQuery('');
       clearImages();
       setRecommendation(null);
@@ -267,7 +228,7 @@ export default function App() {
         : new Date(selectedDate).setHours(12, 0, 0, 0),
       ...mealData,
     };
-    await saveMealToFirestore(newMeal);
+    await saveMealToLocal(newMeal);
     setIsManualEntryOpen(false);
   };
 
@@ -302,38 +263,47 @@ export default function App() {
 
   const deleteMeal = async (id: string) => {
     if (!user) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'meals', id));
-    } catch (error) {
-      console.error('Error deleting meal:', error);
-    }
+    setMeals(prev => {
+      const newMeals = prev.filter(m => m.id !== id);
+      const data = loadUserData(user.uid);
+      saveUserData(user.uid, { ...data, meals: newMeals });
+      return newMeals;
+    });
   };
 
-  const saveRecipeToFirestore = async (recipe: CustomRecipe) => {
+  const saveRecipeToLocal = async (recipe: CustomRecipe) => {
     if (!user) return;
-    try {
-      await setDoc(doc(db, 'users', user.uid, 'recipes', recipe.id), recipe);
-    } catch (error) {
-      console.error('Error saving recipe:', error);
-    }
+    setRecipes(prev => {
+      const existing = prev.findIndex(r => r.id === recipe.id);
+      let newRecipes;
+      if (existing >= 0) {
+        newRecipes = [...prev];
+        newRecipes[existing] = recipe;
+      } else {
+        newRecipes = [...prev, recipe];
+      }
+      const data = loadUserData(user.uid);
+      saveUserData(user.uid, { ...data, recipes: newRecipes });
+      return newRecipes;
+    });
   };
 
-  const deleteRecipeFromFirestore = async (id: string) => {
+  const deleteRecipeFromLocal = async (id: string) => {
     if (!user) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'recipes', id));
-    } catch (error) {
-      console.error('Error deleting recipe:', error);
-    }
+    setRecipes(prev => {
+      const newRecipes = prev.filter(r => r.id !== id);
+      const data = loadUserData(user.uid);
+      saveUserData(user.uid, { ...data, recipes: newRecipes });
+      return newRecipes;
+    });
   };
 
-  const saveProfileToFirestore = async (newProfile: UserProfile) => {
+  const saveProfileToLocal = async (newProfile: UserProfile) => {
     if (!user) return;
-    try {
-      await setDoc(doc(db, 'users', user.uid), newProfile);
-    } catch (error) {
-      console.error('Error saving profile:', error);
-    }
+    setProfile(newProfile);
+    if (newProfile.goals) setGoals(newProfile.goals);
+    const data = loadUserData(user.uid);
+    saveUserData(user.uid, { ...data, profile: newProfile });
   };
 
   const fetchRecommendation = async () => {
@@ -367,19 +337,19 @@ export default function App() {
   const handleOnboardingComplete = async (newProfile: UserProfile, newGoals: DailyGoal) => {
     if (!user) return;
     const profileWithUid = { ...newProfile, uid: user.uid, goals: newGoals };
-    await saveProfileToFirestore(profileWithUid);
+    await saveProfileToLocal(profileWithUid);
   };
 
   const handleWeighInComplete = async (newProfile: UserProfile, newGoals: DailyGoal) => {
     if (!user) return;
     const profileWithUid = { ...newProfile, uid: user.uid, goals: newGoals };
-    await saveProfileToFirestore(profileWithUid);
+    await saveProfileToLocal(profileWithUid);
     setShowWeighIn(false);
   };
 
   const handleWeighInSkip = async () => {
     if (profile && user) {
-      await saveProfileToFirestore({ ...profile, lastWeighInDate: Date.now() });
+      await saveProfileToLocal({ ...profile, lastWeighInDate: Date.now() });
     }
     setShowWeighIn(false);
   };
@@ -435,8 +405,9 @@ export default function App() {
             )}
 
             <button
+              id="login-button"
               type="submit"
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] mt-4"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2"
             >
               Войти
             </button>
@@ -730,12 +701,15 @@ export default function App() {
           goals={goals} 
           onSave={async (g) => { 
             setGoals(g); 
-            if (profile && user) await saveProfileToFirestore({ ...profile, goals: g });
+            if (profile && user) await saveProfileToLocal({ ...profile, goals: g });
             setIsSettingsOpen(false); 
           }} 
           onClose={() => setIsSettingsOpen(false)} 
           onResetProfile={async () => {
-            if (user) await deleteDoc(doc(db, 'users', user.uid));
+            if (user) {
+              const data = loadUserData(user.uid);
+              saveUserData(user.uid, { ...data, profile: null });
+            }
             setProfile(null);
             setIsSettingsOpen(false);
           }}
@@ -745,8 +719,8 @@ export default function App() {
       {isRecipeOpen && (
         <RecipeModal 
           recipes={recipes} 
-          onSave={saveRecipeToFirestore} 
-          onDelete={deleteRecipeFromFirestore} 
+          onSave={saveRecipeToLocal} 
+          onDelete={deleteRecipeFromLocal} 
           onClose={() => setIsRecipeOpen(false)} 
         />
       )}

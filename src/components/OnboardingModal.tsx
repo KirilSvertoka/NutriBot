@@ -195,6 +195,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
             <div className="pt-4 flex gap-3">
               {step > 1 && (
                 <button
+                  id="onboarding-back-button"
                   type="button"
                   onClick={() => setStep(step - 1)}
                   className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium transition-colors"
@@ -203,6 +204,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 </button>
               )}
               <button
+                id="onboarding-next-button"
                 type="submit"
                 disabled={!isStepValid()}
                 className="flex-1 bg-emerald-500 text-white py-2 rounded-lg font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
