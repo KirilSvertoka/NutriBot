@@ -229,8 +229,15 @@ app.post('/api/chat', async (req, res) => {
             functionResponse: { name: call.name, response: { success: true } }
           });
         } else if (call.name === 'saveRecipe') {
+          let recipeId;
+          try {
+            recipeId = crypto.randomUUID();
+          } catch (e) {
+            console.error("crypto.randomUUID() failed, falling back:", e);
+            recipeId = Date.now().toString() + Math.random().toString();
+          }
           const newRecipe = {
-            id: crypto.randomUUID(),
+            id: recipeId,
             name: call.args.name,
             ingredients: call.args.ingredients,
             macrosPer100g: {
