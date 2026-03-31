@@ -136,8 +136,8 @@ app.post('/api/analyzeIngredient', async (req, res) => {
 // Endpoint 4: Chat Assistant
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, history = [], context, images = [], recipes = [] } = req.body;
-    const { meals, goals, profile } = context;
+    const { message, history = [], context = {}, images = [], recipes = [] } = req.body;
+    const { meals = [], goals = { calories: 2000, protein: 150, fat: 70, carbs: 250 }, profile = {} } = context;
 
     let recipeContext = "";
     if (recipes && recipes.length > 0) {
