@@ -235,9 +235,10 @@ export default function App() {
       }
       
       clearImages();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in chat:', error);
-      setChatMessages(prev => [...prev, { role: 'model', text: 'Извините, произошла ошибка при обработке запроса.' }]);
+      const errorMessage = error.message || 'Извините, произошла ошибка при обработке запроса.';
+      setChatMessages(prev => [...prev, { role: 'model', text: `Ошибка: ${errorMessage}` }]);
     } finally {
       setIsLoading(false);
     }

@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import path from 'path';
+import crypto from 'crypto';
 
 const app = express();
 const PORT = 3000;
