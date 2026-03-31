@@ -83,6 +83,23 @@ const editMealDecl: FunctionDeclaration = {
   }
 };
 
+const saveRecipeDecl: FunctionDeclaration = {
+  name: "saveRecipe",
+  description: "Сохранить новый рецепт или блюдо в список 'Мои блюда' пользователя. Используйте это, когда пользователь просит запомнить рецепт или сохранить блюдо для будущего использования.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      name: { type: Type.STRING, description: "Название рецепта/блюда" },
+      ingredients: { type: Type.STRING, description: "Список ингредиентов (через запятую или текстом)" },
+      calories: { type: Type.NUMBER, description: "Калории на 100г" },
+      protein: { type: Type.NUMBER, description: "Белки на 100г" },
+      fat: { type: Type.NUMBER, description: "Жиры на 100г" },
+      carbs: { type: Type.NUMBER, description: "Углеводы на 100г" }
+    },
+    required: ["name", "ingredients", "calories", "protein", "fat", "carbs"]
+  }
+};
+
 // Endpoint 2: Analyze Ingredient
 app.post('/api/analyzeIngredient', async (req, res) => {
   try {
@@ -137,6 +154,7 @@ app.post('/api/chat', async (req, res) => {
     Если пользователь просит добавить еду, используйте функцию addMeal. Оценивайте КБЖУ самостоятельно, если пользователь не указал точные цифры. Если прикреплено фото, проанализируйте его.
     Если пользователь просит удалить еду, найдите ее ID в списке приемов пищи за сегодня и используйте функцию deleteMeal.
     Если пользователь просит изменить еду (например, поменять вес, калории или название), найдите ее ID и используйте функцию editMeal.
+    Если пользователь просит сохранить рецепт или блюдо для будущего использования (в список "Мои блюда"), используйте функцию saveRecipe.
     Отвечайте дружелюбно, кратко и по делу.` + recipeContext;
 
     const ai = getAI(req);
@@ -165,7 +183,7 @@ app.post('/api/chat', async (req, res) => {
       contents,
       config: {
         systemInstruction,
-        tools: [{ functionDeclarations: [addMealDecl, deleteMealDecl, editMealDecl] }],
+        tools: [{ functionDeclarations: [addMealDecl, deleteMealDecl, editMealDecl, saveRecipeDecl] }],
         toolConfig: { includeServerSideToolInvocations: true }
       }
     });
@@ -209,6 +227,22 @@ app.post('/api/chat', async (req, res) => {
           functionResponses.push({
             functionResponse: { name: call.name, response: { success: true } }
           });
+        } else if (call.name === 'saveRecipe') {
+          const newRecipe = {
+            id: crypto.randomUUID(),
+            name: call.args.name,
+            ingredients: call.args.ingredients,
+            macrosPer100g: {
+              calories: call.args.calories,
+              protein: call.args.protein,
+              fat: call.args.fat,
+              carbs: call.args.carbs
+            }
+          };
+          actions.push({ type: 'SAVE_RECIPE', payload: { recipe: newRecipe } });
+          functionResponses.push({
+            functionResponse: { name: call.name, response: { success: true, recipe: newRecipe } }
+          });
         }
       }
 
@@ -219,7 +253,7 @@ app.post('/api/chat', async (req, res) => {
         contents,
         config: {
           systemInstruction,
-          tools: [{ functionDeclarations: [addMealDecl, deleteMealDecl, editMealDecl] }],
+          tools: [{ functionDeclarations: [addMealDecl, deleteMealDecl, editMealDecl, saveRecipeDecl] }],
           toolConfig: { includeServerSideToolInvocations: true }
         }
       });

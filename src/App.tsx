@@ -228,6 +228,8 @@ export default function App() {
             await deleteMeal(action.payload.id);
           } else if (action.type === 'EDIT_MEAL') {
             await editMeal(action.payload.id, action.payload.updates);
+          } else if (action.type === 'SAVE_RECIPE') {
+            await saveRecipeToLocal(action.payload.recipe);
           }
         }
       }
